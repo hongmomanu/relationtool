@@ -83,7 +83,7 @@ Ext.define('RelationTool.controller.Relaction', {
             var res=Ext.JSON.decode(response.responseText);
             var relactions=[];
             Ext.each(res.relations,function(item){
-                relactions.push(item.toFixed(1));
+                relactions.push(item.toFixed(2));
             });
             me.appedtext("样本站台:"+res.sstation,resultpanel);
             me.appedtext("事件站台:"+res.rstation,resultpanel);
