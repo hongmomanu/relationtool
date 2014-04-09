@@ -36,9 +36,10 @@ Ext.define('RelationTool.controller.Relaction', {
         html.append(content);
         resultpanel.setValue('<div>'+allhtml.html()+'</div>');
     },
-    importdata_begin:function(title,filepath,resultpanel,callback){
+    importdata_begin:function(title,filepath,resultpanel,callback,type){
         var params={
-            paths:filepath
+            paths:filepath,
+            type:type
         };
         var me=this;
         me.appedtext(title,resultpanel);
@@ -88,13 +89,17 @@ Ext.define('RelationTool.controller.Relaction', {
             me.appedtext("样本站台:"+res.sstation,resultpanel);
             me.appedtext("事件站台:"+res.rstation,resultpanel);
             me.appedtext("相关性:"+relactions,resultpanel);
-            me.appedtext("最大值:"+Ext.max(relactions),resultpanel);
+            me.appedtext("最大值:"+Ext.max(Ext.Array.map(relactions,function(str,index,array){ //根据返回值组成数组
+                return Math.abs(str);
+            })),resultpanel);
+            me.caculate= me.caculate+1;
 
         };
         var failFunc = function (form, action) {
             Ext.TaskManager.stop(task);
             me.appedtext("\n",resultpanel,true);
             me.appedtext(title+'失败',resultpanel);
+            me.caculate= me.caculate+1;
         };
 
         var param={};
@@ -122,7 +127,8 @@ Ext.define('RelationTool.controller.Relaction', {
                 files_str.push(action.result.msg.earthquicks[i].data);
             }
 
-            function relationcallback(){
+            /*function relationcallback(){
+
                 for(var i=0;i<action.result.msg.earthquicks.length;i++){
                     Ext.each(action.result.msg.earthquicks[i].stations,function(item){
                        me.relations_begin('开始相关分析'+item.sstation+"/BHZ",item,resultpanel,"/BHZ");
@@ -130,12 +136,50 @@ Ext.define('RelationTool.controller.Relaction', {
                        me.relations_begin('开始相关分析'+item.sstation+"/BHE",item,resultpanel,"/BHE");
                     });
                 }
-            }
+            }*/
+
             //relationcallback();
             function datacallback(){
-                me.importdata_begin("开始导入地震数据",files_str.join(","),resultpanel,relationcallback);
+                me.caculate=0;
+                me.earthindex=0;
+                var task={
+                    run: function(){
+                        console.log(me.caculate);
+                        if(me.caculate==3||me.earthindex==0){
+                            me.caculate=0;
+                            console.log(me.earthindex);
+                            if(me.earthindex==(files_str.length-1)){
+                                Ext.TaskManager.stop(task);
+                            }
+                            me.importdata_begin("开始导入地震数据"+action.result.msg.earthquicks[me.earthindex].name,files_str[me.earthindex],resultpanel,
+                                (function(index){
+                                   return  function a(){
+                                        var station=action.result.msg.stations[index];
+                                        var item={};
+                                        item.sstation=station;
+                                        item.rstation=station;
+                                        item.stime=action.result.msg.stime;
+                                        item.rtime=action.result.msg.rtime;
+                                        item.second=action.result.msg.second;
+                                        item.move=action.result.msg.move;
+                                        me.relations_begin('开始相关分析'+station+"/BHZ",item,resultpanel,"/BHZ");
+                                        me.relations_begin('开始相关分析'+station+"/BHN",item,resultpanel,"/BHN");
+                                        me.relations_begin('开始相关分析'+station+"/BHE",item,resultpanel,"/BHE");
+                                    }
+
+                                })(me.earthindex),1);
+                            me.earthindex=me.earthindex+1;
+                        }
+                    },
+                    interval: 500
+                }
+                Ext.TaskManager.start(task);
+                //me.importdata_begin("开始导入地震数据",files_str[0],resultpanel,relationcallback,1);
+                //me.importdata_begin("开始导入地震数据",files_str.join(","),resultpanel,relationcallback,1);
+
+
             }
-            me.importdata_begin("开始导入样本数据",action.result.msg.samples,resultpanel,datacallback);
+            me.importdata_begin("开始导入样本数据",action.result.msg.samples,resultpanel,datacallback,0);
 
         };
 

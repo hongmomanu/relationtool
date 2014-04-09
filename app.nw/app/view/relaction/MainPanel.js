@@ -65,7 +65,7 @@ Ext.define('RelationTool.view.relaction.MainPanel', {
                     shrinkWrap:3,
                     enableLists   :false,
                     enableSourceEdit    :false,
-                    minHeight:200,
+                    minHeight:500,
                     autoHeight: "auto",
                     autoWidth: "auto",
                     itemId:'status-results',
