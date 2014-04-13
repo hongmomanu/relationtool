@@ -46,14 +46,31 @@ Ext.define('RelationTool.view.relaction.MainPanel', {
                             allowBlank: false
                         },
                         {
-                            xtype:'textarea',
-                            grow:false,
-                            autoScroll:true,
-                            itemId:'status-results',
-                            anchor: '100%',
-                            fieldLabel: '相关运行状态'
+                            xtype:'container',
+                            layout: {
+                                type: 'hbox'
+                            },
+                            items:[
+                                {
+                                    xtype:'textarea',
+                                    grow:false,
+                                    flex:0.3,
+                                    autoScroll:true,
+                                    itemId:'status-results',
+                                    anchor: '100%',
+                                    fieldLabel: '相关运行状态'
+
+                                },
+                                {
+                                    xtype:'panel',
+                                    flex:0.7,
+                                    height:'100%',
+                                    html:'<div id="chart_div" style="overflow:auto;"></div>'
+                                }
+                            ]
 
                         }
+
                     ],
                     buttons:[
                         {

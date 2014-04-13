@@ -34,6 +34,7 @@ Ext.define('RelationTool.controller.Relaction', {
     layoutfunc:function(panel){
         var textarea=panel.down('#status-results');
         textarea.setHeight(panel.getHeight()-160);
+        $('#chart_div').height(panel.getHeight()-160);
 
     },
     appedtext:function(text,resultpanel,isoneline){
@@ -79,7 +80,7 @@ Ext.define('RelationTool.controller.Relaction', {
 
 
     },
-    relations_begin:function(title,params,resultpanel,type){
+    relations_begin:function(title,params,resultpanel,type,totalname){
 
         var me=this;
         me.appedtext(title,resultpanel);
@@ -91,22 +92,49 @@ Ext.define('RelationTool.controller.Relaction', {
         }
         Ext.TaskManager.start(task);
         var successFunc = function (response, action) {
+
             Ext.TaskManager.stop(task);
+
             me.appedtext("\n",resultpanel,true);
             me.appedtext(title+'成功',resultpanel);
             var res=Ext.JSON.decode(response.responseText);
             var relactions=[];
+            var rtime=res.rtime;
+            var stime=res.stime;
+
             Ext.each(res.relations,function(item){
                 relactions.push(item.toFixed(2));
             });
             //me.appedtext("样本站台:"+res.sstation,resultpanel,true);
             //me.appedtext("事件站台:"+res.rstation,resultpanel);
             //me.appedtext("相关性:"+relactions,resultpanel,true);
-            me.appedtext("最大值:"+Ext.max(Ext.Array.map(relactions,function(str,index,array){ //根据返回值组成数组
-                return Math.abs(str);
-            })),resultpanel,true);
+            var max_index=0;
+            var max_data=0;
+
+
+            for(var i=0;i<relactions.length;i++){
+                var item_data=Math.abs(relactions[i]);
+                if(item_data>max_data){
+                    max_data=item_data;
+                    max_index=i;
+                }
+            }
+            //console.log(relactions);
+            testobj=relactions;
+
+            me.appedtext("最大值:"+max_data,resultpanel,true);
             me.appedtext("\n",resultpanel,true);
-            me.caculate= me.caculate+1;
+            function call_back(){
+                me.caculate= me.caculate+1;
+            }
+            rtime= Ext.Date.add(new Date(rtime),Ext.Date.HOUR,8);
+            stime= Ext.Date.add(new Date(stime),Ext.Date.HOUR,8);
+            params.rtime=rtime;
+            params.stime=stime;
+            me.make_chart(1,params.rtime,params.second,
+                params.rstation+type,max_index,totalname,call_back,params.stime,relactions);
+
+
 
         };
         var failFunc = function (form, action) {
@@ -126,6 +154,85 @@ Ext.define('RelationTool.controller.Relaction', {
 
 
     },
+    make_chart:function(type,time,second,station,max_index,chartname,callback,timesample,relactions){
+        var me=this;
+        var params={};
+        if(type==0){
+            params.time=time;
+
+        }else{
+            var a= Ext.Date.add(new Date(time),Ext.Date.MILLI,max_index*10);
+            params.time=Ext.util.Format.date(a,'Y-m-d H:i:s.u');
+            params.timesample=Ext.util.Format.date(timesample,'Y-m-d H:i:s.u');
+        }
+        params.second=second;
+        params.type=type;
+        params.station=station;
+
+        var successFunc = function (response, action) {
+            var data=Ext.JSON.decode(response.responseText).result;
+            var datasample=Ext.JSON.decode(response.responseText).result1;
+            var maxdata=Ext.max(Ext.Array.map(data,function(item){
+                return Math.abs(item);
+            }));
+            var maxsampledata=Ext.max(Ext.Array.map(datasample,function(item){
+                return Math.abs(item);
+            }));
+
+            var res = [];
+            var ressample=[];
+            var resrelactions=[];
+
+
+            for (var i = 0; i < data.length; i++) {
+                res.push([i, data[i]/maxdata]);
+                ressample.push([i,datasample[i]/maxsampledata]);
+            }
+            for(var i=0;i<relactions.length;i++){
+                resrelactions.push([i,relactions[i]]);
+
+            }
+
+            var id=chartname+"chart"+station.replace("/","-");
+            var idrelactions=id+"relactions";
+            $('#chart_div').append('<div id="'+id+'" style="height: 120px;"></div>');
+            $('#chart_div').append('<div id="'+idrelactions+'" style="height: 120px;"></div>');
+            var plot = $.plot("#"+id, [
+                { label:chartname+station, data: res, color: 'green' },
+                { label:'样本数据：'+station, data: ressample, color: 'red' }
+            ], {
+                series: {
+                    shadowSize: 0
+                },
+                yaxis: {
+                },
+                xaxis: {
+                    show: false
+                }
+            });
+            var plot_relation = $.plot("#"+idrelactions, [
+                { label:'滑动相关性：'+station, data: resrelactions, color: 'blue' }
+            ], {
+                series: {
+                    shadowSize: 0
+                },
+                yaxis: {
+                },
+                xaxis: {
+                    show: true
+                }
+            });
+            if(callback)callback();
+
+
+        };
+        var failFunc = function (form, action) {
+
+        };
+        CommonFunc.ajaxSend(params,'realstream/samplescachedetail',successFunc,failFunc,'GET');
+
+
+    },
     relation_begin:function(btn){
 
         var me=this;
@@ -134,6 +241,7 @@ Ext.define('RelationTool.controller.Relaction', {
         var url="realstream/toolconfig";
         var resultpanel=form.up('panel').down('#status-results');
         resultpanel.setValue("");
+        $('#chart_div').html('');
         localStorage.filepath=form.getValues().filename;
         var successFunc = function (forms, action) {
             me.appedtext('数据配置文件加载成功',resultpanel);
@@ -155,6 +263,15 @@ Ext.define('RelationTool.controller.Relaction', {
 
             //relationcallback();
             function datacallback(){
+               /* for(var n=0;n<action.result.msg.stations.length;n++){
+                    me.make_chart(0,action.result.msg.stime,action.result.msg.second,
+                        action.result.msg.stations[n].name+"/"+action.result.msg.stations[n].type+"HZ",0,"样本数据");
+                    me.make_chart(0,action.result.msg.stime,action.result.msg.second,
+                        action.result.msg.stations[n].name+"/"+action.result.msg.stations[n].type+"HE",0,"样本数据");
+                    me.make_chart(0,action.result.msg.stime,action.result.msg.second,
+                        action.result.msg.stations[n].name+"/"+action.result.msg.stations[n].type+"HN",0,"样本数据");
+                }*/
+
                 me.caculate=0;
                 me.earthindex=0;
                 var task={
@@ -177,7 +294,8 @@ Ext.define('RelationTool.controller.Relaction', {
                                 (function(index){
                                    return  function a(){
                                        for(var i=0;i<action.result.msg.stations.length;i++){
-                                           var station=action.result.msg.stations[i];
+                                           var station=action.result.msg.stations[i].name;
+                                           var station_type=action.result.msg.stations[i].type;
 
                                            var item={};
                                            item.sstation=station;
@@ -186,9 +304,13 @@ Ext.define('RelationTool.controller.Relaction', {
                                            item.rtime=action.result.msg.rtime;
                                            item.second=action.result.msg.second;
                                            item.move=action.result.msg.move;
-                                           me.relations_begin('开始相关分析'+station+"/BHZ",item,resultpanel,"/BHZ");
-                                           me.relations_begin('开始相关分析'+station+"/BHN",item,resultpanel,"/BHN");
-                                           me.relations_begin('开始相关分析'+station+"/BHE",item,resultpanel,"/BHE");
+
+                                           me.relations_begin('开始相关分析'+station+"/"+station_type+"HZ",item,
+                                               resultpanel,"/"+station_type+"HZ",action.result.msg.earthquicks[index].name);
+                                           me.relations_begin('开始相关分析'+station+"/"+station_type+"HN",item,
+                                               resultpanel,"/"+station_type+"HN",action.result.msg.earthquicks[index].name);
+                                           me.relations_begin('开始相关分析'+station+"/"+station_type+"HE",item,
+                                               resultpanel,"/"+station_type+"HE",action.result.msg.earthquicks[index].name);
                                        }
 
                                     }
