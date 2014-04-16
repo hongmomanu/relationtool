@@ -127,8 +127,10 @@ Ext.define('RelationTool.controller.Relaction', {
             function call_back(){
                 me.caculate= me.caculate+1;
             }
-            rtime= Ext.Date.add(new Date(rtime),Ext.Date.HOUR,8);
-            stime= Ext.Date.add(new Date(stime),Ext.Date.HOUR,8);
+            //rtime= Ext.Date.add(new Date(rtime),Ext.Date.HOUR,8);
+            //stime= Ext.Date.add(new Date(stime),Ext.Date.HOUR,8);
+            console.log(rtime)
+            console.log(stime)
             params.rtime=rtime;
             params.stime=stime;
             me.make_chart(1,params.rtime,params.second,
@@ -157,6 +159,7 @@ Ext.define('RelationTool.controller.Relaction', {
     make_chart:function(type,time,second,station,max_index,chartname,callback,timesample,relactions){
         var me=this;
         var params={};
+        //time=time.replace("T"," ");
         if(type==0){
             params.time=time;
 
