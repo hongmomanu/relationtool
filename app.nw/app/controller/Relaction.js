@@ -119,8 +119,6 @@ Ext.define('RelationTool.controller.Relaction', {
                     max_index=i;
                 }
             }
-            //console.log(relactions);
-            testobj=relactions;
 
             me.appedtext("最大值:"+max_data,resultpanel,true);
             me.appedtext("\n",resultpanel,true);
@@ -129,12 +127,10 @@ Ext.define('RelationTool.controller.Relaction', {
             }
             //rtime= Ext.Date.add(new Date(rtime),Ext.Date.HOUR,8);
             //stime= Ext.Date.add(new Date(stime),Ext.Date.HOUR,8);
-            console.log(rtime)
-            console.log(stime)
             params.rtime=rtime;
             params.stime=stime;
             me.make_chart(1,params.rtime,params.second,
-                params.rstation+type,max_index,totalname,call_back,params.stime,relactions);
+                params.rstation+type,max_index,totalname,call_back,params.stime,relactions,res.rate);
 
 
 
@@ -156,7 +152,7 @@ Ext.define('RelationTool.controller.Relaction', {
 
 
     },
-    make_chart:function(type,time,second,station,max_index,chartname,callback,timesample,relactions){
+    make_chart:function(type,time,second,station,max_index,chartname,callback,timesample,relactions,rate){
         var me=this;
         var params={};
         //time=time.replace("T"," ");
@@ -164,7 +160,7 @@ Ext.define('RelationTool.controller.Relaction', {
             params.time=time;
 
         }else{
-            var a= Ext.Date.add(new Date(time),Ext.Date.MILLI,max_index*10);
+            var a= Ext.Date.add(new Date(time),Ext.Date.MILLI,max_index*Math.abs(rate));
             params.time=Ext.util.Format.date(a,'Y-m-d H:i:s.u');
             params.timesample=Ext.util.Format.date(timesample,'Y-m-d H:i:s.u');
         }
@@ -296,16 +292,32 @@ Ext.define('RelationTool.controller.Relaction', {
                             me.importdata_begin("开始导入地震数据"+action.result.msg.earthquicks[me.earthindex].name,files_str[me.earthindex],resultpanel,
                                 (function(index){
                                    return  function a(){
+                                       var timespan={};
+                                       for(var i=0;i<action.result.msg.stations.length;i++){
+                                           timespan[action.result.msg.stations[i].name]=(new Date(action.result.msg.stations[i].stime)).getTime();
+                                       }
+
                                        for(var i=0;i<action.result.msg.stations.length;i++){
                                            var station=action.result.msg.stations[i].name;
                                            var station_type=action.result.msg.stations[i].type;
+                                           var stime=action.result.msg.stations[i].stime;
+                                           var second=action.result.msg.stations[i].second;
+                                           var rtime_p=action.result.msg.earthquicks[index].rtime;
+                                           var station_p=action.result.msg.earthquicks[index].station;
+
+                                           var rtime=station_p==station?rtime_p:
+                                               Ext.util.Format.date(Ext.Date.add((new Date (rtime_p)),Ext.Date.MILLI,
+                                                   (timespan[station]-timespan[station_p])),'Y-m-d H:i:s.u')
 
                                            var item={};
                                            item.sstation=station;
                                            item.rstation=station;
-                                           item.stime=action.result.msg.stime;
-                                           item.rtime=action.result.msg.rtime;
-                                           item.second=action.result.msg.second;
+                                           //item.stime=action.result.msg.stime;
+                                           //item.rtime=action.result.msg.rtime;
+                                           //item.second=action.result.msg.second;
+                                           item.stime=stime;
+                                           item.rtime=rtime;
+                                           item.second=second;
                                            item.move=action.result.msg.move;
 
                                            me.relations_begin('开始相关分析'+station+"/"+station_type+"HZ",item,
@@ -343,7 +355,6 @@ Ext.define('RelationTool.controller.Relaction', {
 
 
         };
-
         CommonFunc.formSubmit(form, params, url, successFunc, failFunc,"",null);
 
 

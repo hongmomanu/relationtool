@@ -1,6 +1,6 @@
 Ext.Loader.setPath({
     
-    'Ext.ux':'extjs4.2.1/ux',
+    'Ext.ux':'extjs4.2.1/ux'
    
 });
 

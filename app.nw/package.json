@@ -27,7 +27,7 @@
   "window": {
         "title": "数据相关工具",
 
-        "toolbar": false,
+        "toolbar": true,
 
         "position": "mouse"
 
